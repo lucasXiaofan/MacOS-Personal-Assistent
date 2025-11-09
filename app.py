@@ -16,6 +16,7 @@ from focus_helper import (
     send_focus_notification,
     capture_and_analyze_screenshot
 )
+from voiceengine import generate_speech_for_text, text_to_speech
 
 # Load environment variables
 load_dotenv()
@@ -80,123 +81,10 @@ def process_pdf_docling(pdf_file):
 
 
 
-def detect_emotion_state(text):
-    """
-    Detect if the text expresses surprised/worried emotions.
-    Returns: "surprised_worried" or "neutral"
-    """
-    if not text or not text.strip():
-        return "neutral"
-    
-    # Debug: show what we're analyzing (first 100 chars)
-    print(f"🔍 Analyzing emotion in text: {text[:100]}...")
-    
-    text_lower = text.lower()
-    
-    # Check for surprised/worried emotions (A_3)
-    # A_3 = Surprise at unexpected events OR Worry about future outcomes
-    surprised_worried_keywords = [
-        # Pure surprise words
-        "surprised", "surprise", "surprising", "surprised that", "surprised to",
-        "wow", "whoa", "oh my", "oh gosh",
-        "unexpected", "unexpectedly", "didn't expect", "wasn't expecting",
-        "didn't see that coming", "caught off guard", "taken aback",
-        "startled", "stunned", "amazed",
-        
-        # Genuine worry about outcomes
-        "worried", "worry", "worrying", "worries", "worried about",
-        "anxious", "anxiety", "nervous", "nervousness",
-        "uncertain", "uncertainty", "unsure", "not sure", "not certain",
-        "hesitant", "hesitation", "apprehensive", "uneasy",
-        
-        # Uncertainty phrases
-        "hmm", "hmmm", "uh oh", "huh", "huh?", "really?",
-        "that's unexpected", "that's surprising",
-        "i'm worried", "i'm surprised", "i'm not sure",
-        "wondering if", "hoping that", "uncertain about",
-        "not entirely sure", "a bit worried", "a little worried",
-        
-        # Time-sensitive worry
-        "deadline", "due soon", "running out of time", "time is tight",
-        "might not make it", "cutting it close", "pressed for time",
-        "running short on time", "time crunch"
-    ]
-    
-    surprised_worried_patterns = [
-        "i'm surprised", "i'm worried", "i'm not sure",
-        "that's surprising", "that's unexpected", 
-        "oh no", "uh oh", "hmm", "didn't see that coming",
-        "i didn't expect", "wasn't expecting", "caught me off guard",
-        "that worries me", "makes me worried",
-        "a bit worried", "a little worried", "somewhat surprised",
-        "quite surprising", "really surprising",
-        "not entirely sure", "not completely certain", "a bit uncertain",
-        "wondering if", "hoping that", "uncertain about"
-    ]
-    
-    # Check keywords (instant detection)
-    for keyword in surprised_worried_keywords:
-        if keyword in text_lower:
-            print(f"🔍 Emotion detection (keyword '{keyword}'): SURPRISED/WORRIED detected")
-            return "surprised_worried"
-    
-    # Check patterns (instant detection)
-    for pattern in surprised_worried_patterns:
-        if pattern in text_lower:
-            print(f"🔍 Emotion detection (pattern '{pattern}'): SURPRISED/WORRIED detected")
-            return "surprised_worried"
-    
-    # Use Gemini for nuanced detection if keywords didn't match
-    try:
-        prompt_surprised = f"""Does this text express SURPRISE or WORRY about outcomes?
-
-SURPRISE indicators:
-- "I'm surprised that..." (neutral observation)
-- "That's unexpected" (not negative)
-- "Wow", "Oh my" (exclamation)
-- "Didn't expect that" (neutral)
-
-WORRY indicators:
-- "I'm worried about..." (concern for outcome)
-- "That worries me" (concern, not judgment)
-- "Not sure if..." (uncertainty)
-- "Deadline approaching" (time pressure concern)
-
-Text: "{text[:600]}"
-
-Does this express SURPRISE or WORRY? Answer ONLY "YES" or "NO"."""
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=prompt_surprised,
-            config={"temperature": 0.0, "max_output_tokens": 10}
-        )
-        result = response.text.strip().upper()
-        # More flexible YES detection
-        has_surprised_worried = (
-            result.startswith("YES") or 
-            (result.split()[0] == "YES" if result.split() else False) or
-            "YES" in result
-        )
-        
-        if has_surprised_worried:
-            print(f"🔍 Emotion detection (Gemini): SURPRISED/WORRIED (response: '{result}')")
-            return "surprised_worried"
-        
-        return "neutral"
-        
-    except Exception as e:
-        print(f"⚠️ Error in Gemini emotion detection: {str(e)}")
-        return "neutral"
-
-
-def chat_with_context(message, history, pdf_content):
+def chat_with_context(message, history, pdf_content, auto_play_voice=False):
     """Handle chat with PDF context"""
     if not message.strip():
-        base_dir = Path(__file__).parent
-        default_image = str(base_dir / "images" / "A_1.png")
-        default_bg = str(base_dir / "images" / "happy landscape.jpg")
-        return history, history, pdf_content, default_image, default_bg
+        return history, history, pdf_content, None
 
     # Get current date and time information
     now = datetime.now()
@@ -245,55 +133,19 @@ Please provide a helpful response."""
 
     history.append((message, bot_response))
     
-    # Detect emotion state IMMEDIATELY (synchronous, no delay)
-    emotion_state = detect_emotion_state(bot_response)
+    # Generate audio for the bot response
+    audio_file = None
+    try:
+        audio_file = generate_speech_for_text(bot_response, auto_play=auto_play_voice)
+    except Exception as e:
+        print(f"Error generating speech: {e}")
     
-    # Use absolute paths for images to ensure they load instantly
-    base_dir = Path(__file__).parent
-    a1_path = base_dir / "images" / "A_1.png"
-    a3_path = base_dir / "images" / "A_3.png"
-    
-    # Verify files exist and get absolute paths
-    a1_abs = str(a1_path.resolve()) if a1_path.exists() else None
-    a3_abs = str(a3_path.resolve()) if a3_path.exists() else None
-    
-    if not a1_abs:
-        print(f"❌ ERROR: A_1.png not found at {a1_path}")
-    if not a3_abs:
-        print(f"❌ ERROR: A_3.png not found at {a3_path}")
-    
-    # Get background image paths (check both .jpg and .webp extensions)
-    happy_bg_path = base_dir / "images" / "happy landscape.jpg"
-    sad_bg_path_jpg = base_dir / "images" / "sad landscape.jpg"
-    sad_bg_path_webp = base_dir / "images" / "sad landscape.webp"
-    
-    # Use .webp if it exists, otherwise try .jpg
-    sad_bg_path = sad_bg_path_webp if sad_bg_path_webp.exists() else sad_bg_path_jpg
-    
-    happy_bg_abs = str(happy_bg_path.resolve()) if happy_bg_path.exists() else None
-    sad_bg_abs = str(sad_bg_path.resolve()) if sad_bg_path.exists() else None
-    
-    # Select character image and background based on emotion state
-    if emotion_state == "surprised_worried" and a3_abs:
-        image_path = a3_abs
-        background_path = sad_bg_abs if sad_bg_abs else None
-        print(f"🖼️ ✅ Switching to A_3.png with sad landscape (surprised/worried emotion)")
-    elif a1_abs:
-        image_path = a1_abs
-        background_path = happy_bg_abs if happy_bg_abs else None
-        print(f"🖼️ Using A_1.png with happy landscape (neutral/positive)")
-    else:
-        # Fallback to relative path if absolute doesn't work
-        image_path = "images/A_1.png"
-        background_path = "images/happy landscape.jpg"
-        print(f"⚠️ Using fallback image paths")
-    
-    return history, history, pdf_content, image_path, background_path
+    return history, history, pdf_content, audio_file
 
-def handle_pdf_upload(pdf_file, chat_history, extraction_method):
+def handle_pdf_upload(pdf_file, chat_history, extraction_method, auto_play_voice=False):
     """Process uploaded PDF, save markdown, and post to chat"""
     if pdf_file is None:
-        return None, "No PDF uploaded", chat_history, chat_history
+        return None, "No PDF uploaded", chat_history, chat_history, None
 
     # Extract content from PDF based on selected method
     if extraction_method == "Docling (Fast, Local)":
@@ -315,6 +167,7 @@ def handle_pdf_upload(pdf_file, chat_history, extraction_method):
     markdown_path = markdown_folder / markdown_filename
 
     # Save markdown file
+    audio_file = None
     try:
         with open(markdown_path, 'w', encoding='utf-8') as f:
             f.write(f"# PDF Extraction: {pdf_filename}\n\n")
@@ -334,12 +187,20 @@ def handle_pdf_upload(pdf_file, chat_history, extraction_method):
         chat_history.append((f"📎 Uploaded: {pdf_filename}", chat_message))
 
         status_msg = f"✅ PDF processed and saved to {markdown_path}"
+        
+        # Generate voice for status message if auto-play is enabled
+        if auto_play_voice:
+            try:
+                status_text = f"PDF {pdf_filename} processed and saved successfully"
+                audio_file = generate_speech_for_text(status_text, auto_play=True)
+            except Exception as e:
+                print(f"Error generating speech for PDF status: {e}")
 
     except Exception as e:
         status_msg = f"❌ Error saving markdown: {str(e)}"
         chat_history.append((f"📎 Uploaded: {pdf_filename}", f"Error: {str(e)}"))
 
-    return extracted_content, status_msg, chat_history, chat_history
+    return extracted_content, status_msg, chat_history, chat_history, audio_file
 
 def rag_query(query):
     """
@@ -428,12 +289,13 @@ Return only the relevant extracted content, properly formatted."""
 
 
 def generate_voice_response(text):
-    """Generate voice response (placeholder for TTS integration)"""
-    # You can integrate with TTS services like:
-    # - Google Cloud TTS
-    # - ElevenLabs
-    # - OpenAI TTS
-    return None  # Return audio file path when implemented
+    """Generate voice response using voiceengine"""
+    try:
+        audio_file = generate_speech_for_text(text, auto_play=False)
+        return audio_file
+    except Exception as e:
+        print(f"Error generating voice response: {e}")
+        return None
 
 
 def list_knowledge_sources():
@@ -657,8 +519,9 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css) as demo:
         """
     )
     
-    # Hidden state to store PDF content
+    # Hidden state to store PDF content and voice settings
     pdf_content_state = gr.State("")
+    last_audio_file = gr.State(None)
     
     with gr.Row():
         # Left column: Chat section
@@ -830,8 +693,8 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css) as demo:
     chat_state = gr.State([])
     
     # Event handlers
-    def send_message(message, history, pdf_content):
-        return chat_with_context(message, history, pdf_content)
+    def send_message(message, history, pdf_content, auto_play):
+        return chat_with_context(message, history, pdf_content, auto_play)
     
     # Helper function to convert absolute path to relative path for Gradio
     def get_relative_bg_path(absolute_path):
@@ -918,42 +781,46 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css) as demo:
     
     send_btn.click(
         send_message,
-        inputs=[msg, chat_state, pdf_content_state],
-        outputs=[chatbot, chat_state, pdf_content_state, anime_image, background_state]
-    ).then(
-        update_background_wrapper,
-        inputs=[chatbot, chat_state, pdf_content_state, anime_image, background_state],
-        outputs=[chatbot, chat_state, pdf_content_state, anime_image, background_state, background_style]
+        inputs=[msg, chat_state, pdf_content_state, voice_toggle],
+        outputs=[chatbot, chat_state, pdf_content_state, last_audio_file]
     ).then(
         lambda: "",
         outputs=[msg]
+    ).then(
+        lambda audio_file: audio_file if audio_file else gr.update(),
+        inputs=[last_audio_file],
+        outputs=[audio_output]
     )
     
     msg.submit(
         send_message,
-        inputs=[msg, chat_state, pdf_content_state],
-        outputs=[chatbot, chat_state, pdf_content_state, anime_image, background_state]
-    ).then(
-        update_background_wrapper,
-        inputs=[chatbot, chat_state, pdf_content_state, anime_image, background_state],
-        outputs=[chatbot, chat_state, pdf_content_state, anime_image, background_state, background_style]
+        inputs=[msg, chat_state, pdf_content_state, voice_toggle],
+        outputs=[chatbot, chat_state, pdf_content_state, last_audio_file]
     ).then(
         lambda: "",
         outputs=[msg]
+    ).then(
+        lambda audio_file: audio_file if audio_file else gr.update(),
+        inputs=[last_audio_file],
+        outputs=[audio_output]
     )
     
     pdf_upload.change(
         handle_pdf_upload,
-        inputs=[pdf_upload, chat_state, extraction_method],
-        outputs=[pdf_content_state, pdf_status, chatbot, chat_state]
+        inputs=[pdf_upload, chat_state, extraction_method, voice_toggle],
+        outputs=[pdf_content_state, pdf_status, chatbot, chat_state, last_audio_file]
     ).then(
         list_knowledge_sources,
         outputs=[knowledge_sources_display]
+    ).then(
+        lambda audio_file: audio_file if audio_file else gr.update(),
+        inputs=[last_audio_file],
+        outputs=[audio_output]
     )
     
     clear_btn.click(
-        lambda: ([], [], ""),
-        outputs=[chatbot, chat_state, pdf_content_state]
+        lambda: ([], [], "", None),
+        outputs=[chatbot, chat_state, pdf_content_state, last_audio_file]
     ).then(
         lambda: "Chat cleared!",
         outputs=[pdf_status]
@@ -965,10 +832,28 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css) as demo:
         outputs=[anime_image]
     )
     
-    # TTS button handler (placeholder)
+    # TTS button handler - speak last response
+    def speak_last_response(history):
+        """Generate speech for the last bot response"""
+        if not history or len(history) == 0:
+            return None
+        
+        # Get the last bot response
+        last_message_pair = history[-1]
+        if len(last_message_pair) >= 2:
+            last_bot_response = last_message_pair[1]
+            try:
+                audio_file = generate_voice_response(last_bot_response)
+                return audio_file
+            except Exception as e:
+                print(f"Error generating speech: {e}")
+                return None
+        return None
+    
     tts_btn.click(
-        lambda: gr.Info("TTS feature coming soon! Integrate with your preferred TTS service."),
-        outputs=[]
+        speak_last_response,
+        inputs=[chat_state],
+        outputs=[audio_output]
     )
 
     # Refresh knowledge sources button
