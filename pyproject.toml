@@ -18,6 +18,7 @@ dependencies = [
     "pync>=2.0.3",
     "pynput>=1.8.1",
     "setuptools>=80.9.0",
+    "sounddevice>=0.5.3",
 ]
 
 [dependency-groups]
