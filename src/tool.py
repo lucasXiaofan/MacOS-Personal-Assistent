@@ -17,6 +17,7 @@ import warnings
 import logging
 import numpy as np
 import json
+import time
 
 # Suppress phonemizer and other TTS warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='phonemizer')
@@ -210,21 +211,21 @@ tools = [
     #     }
     # },
     # # only grok fast use ask question tool other llm just don't use this tool, but grok fast vision is trash
-    {
-        "type": "function",
-        "function": {
-            "name": "create_memory_file",
-            "description": "Create a new file in memory folder to track specific information",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "filename": {"type": "string", "description": "Name of the file to create"},
-                    "content": {"type": "string", "description": "Content to write to the file"}
-                },
-                "required": ["filename", "content"]
-            }
-        }
-    },
+    # {
+    #     "type": "function",
+    #     "function": {
+    #         "name": "create_memory_file",
+    #         "description": "Create a new file in memory folder to track specific information",
+    #         "parameters": {
+    #             "type": "object",
+    #             "properties": {
+    #                 "filename": {"type": "string", "description": "Name of the file to create"},
+    #                 "content": {"type": "string", "description": "Content to write to the file"}
+    #             },
+    #             "required": ["filename", "content"]
+    #         }
+    #     }
+    # },
     {
         "type": "function",
         "function": {
@@ -246,7 +247,79 @@ tools = [
                 "required": ["query"]
             }
         }
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_task",
+            "description": "Create a time-dependent task. Tags: hw (homework, removed if overdue), paper_review (auto-extends 2 days), meeting/office_hour (recurrent weekly until deadline), research (standard task)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Task name/description"
+                    },
+                    "tag": {
+                        "type": "string",
+                        "description": "Task type: hw, paper_review, meeting, office_hour, research",
+                        "enum": ["hw", "paper_review", "meeting", "office_hour", "research"]
+                    },
+                    "due_date": {
+                        "type": "string",
+                        "description": "Due date in YYYY-MM-DD format"
+                    },
+                    "done": {
+                        "type": "boolean",
+                        "description": "Completion status (default False)",
+                        "default": False
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Path to related notes file"
+                    },
+                    "deadline": {
+                        "type": "string",
+                        "description": "For recurring tasks (meeting/office_hour), final deadline in YYYY-MM-DD format"
+                    }
+                },
+                "required": ["name", "tag", "due_date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_task",
+            "description": "Update a task by name. Can update due_date, done status, notes, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Task name to find and update"
+                    },
+                    "done": {
+                        "type": "boolean",
+                        "description": "Mark task as done/undone"
+                    },
+                    "due_date": {
+                        "type": "string",
+                        "description": "New due date in YYYY-MM-DD format"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Update notes path"
+                    },
+                    "deadline": {
+                        "type": "string",
+                        "description": "Update deadline for recurring tasks"
+                    }
+                },
+                "required": ["name"]
+            }
+        }
+    },
 ]
 
 def take_screenshot():
@@ -256,6 +329,17 @@ def take_screenshot():
         screenshot = sct.grab(monitor)
         img = Image.frombytes('RGB', screenshot.size, screenshot.rgb)
         return img
+
+def macos_region_screenshot():
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filepath = f"{SCREENSHOT_DIR}/capture_{timestamp}.png"
+    
+    # Run macOS's native interactive region capture
+    subprocess.run(["screencapture", "-i", filepath])
+    
+    # Load it as a PIL image
+    img = Image.open(filepath)
+    return img
 
 def save_screenshot(img):
     """Save screenshot to file"""
@@ -363,6 +447,43 @@ def execute_tool(name, args):
         result = subprocess.run(args["command"], shell=True, capture_output=True, text=True)
         return result.stdout if result.returncode == 0 else f"Error: {result.stderr}"
 
+    elif name == "create_task":
+        from time_depends_tasks import create_task
+        from agent_log import log_activity
+
+        result = create_task(
+            name=args["name"],
+            tag=args["tag"],
+            due_date=args["due_date"],
+            done=args.get("done", False),
+            notes=args.get("notes", ""),
+            deadline=args.get("deadline")
+        )
+
+        # Auto-log task creation
+        log_activity(f"Created task: {args['name']} (due {args['due_date']}) notes: {args.get('notes', '')}")
+
+        return str(result)
+
+    elif name == "get_tasks_summary":
+        from time_depends_tasks import get_tasks_summary
+        return get_tasks_summary()
+
+    elif name == "update_task":
+        from time_depends_tasks import update_task
+        # Remove 'name' from args to get only the updates
+        task_name = args.pop("name")
+        result = update_task(task_name, **args)
+        return str(result)
+
+    elif name == "log_activity":
+        from agent_log import log_activity
+        result = log_activity(
+            summary=args["summary"],
+            files_changed=args.get("files_changed")
+        )
+        return result
+
     elif name == "update_instructions":
         try:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -403,7 +524,7 @@ def execute_tool(name, args):
 
             query = args["query"]
             count = args.get("count", 10)
-
+            time.sleep(1)
             # Brave Search API endpoint
             url = "https://api.search.brave.com/res/v1/web/search"
             headers = {

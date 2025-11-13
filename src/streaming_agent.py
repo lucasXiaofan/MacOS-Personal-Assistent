@@ -13,15 +13,16 @@ from pynput import keyboard
 from tool import *
 import re
 import warnings
-
+from time_depends_tasks import *
+from agent_log import get_recent_logs
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
 load_dotenv()
 
 # OpenAI/OpenRouter setup
-model_name = "x-ai/grok-4-fast"
-# model_name = "anthropic/claude-haiku-4.5"
+# model_name = "x-ai/grok-4-fast"
+model_name = "anthropic/claude-haiku-4.5"
 # model_name = "qwen/qwen3-vl-235b-a22b-instruct"
 # model_name = "openai/gpt-5-mini"
 # model_name = "openrouter/polaris-alpha"
@@ -64,7 +65,15 @@ def run_agent_with_image(task, image_base64=None, conversation_context="", max_i
          current instruction from past:
          {read_instructions()}
 
+        past conversation:
          {conversation_context}
+
+        current tasks of user: 
+        {get_tasks_summary()}
+
+        recent agent log:
+        {get_recent_logs(3)}
+
          """},
         user_message
     ]
@@ -141,7 +150,7 @@ def run_agent_with_image(task, image_base64=None, conversation_context="", max_i
 
         if not tool_calls:
             # Save conversation before returning
-            save_conversation(task, messages, content)
+            save_conversation(task, msg, "")
             return content
 
         # Execute tool calls
@@ -151,10 +160,12 @@ def run_agent_with_image(task, image_base64=None, conversation_context="", max_i
             result = execute_tool(tc["function"]["name"], args)
             print(f"📤 Result: {result}")
             messages.append({"role": "tool", "tool_call_id": tc["id"], "content": str(result)})
-
+            save_conversation(task, {"role": "tool", "tool_call_id": tc["id"], "content": f"""tool_name: {tc["function"]["name"]}
+                                     tool_args: {tc["function"]['arguments']}
+                                     tool_results: {str(result)}"""},"")
     # Save conversation before returning (max iterations)
     final_result = "Max iterations reached"
-    save_conversation(task, messages, final_result)
+    save_conversation(task, final_result, "")
     return final_result
 
 def process_screenshot_with_agent():
@@ -163,8 +174,11 @@ def process_screenshot_with_agent():
     print("🚀 Starting screenshot capture...")
 
     # Take screenshot
-    img = take_screenshot()
-    screenshot_path = save_screenshot(img)
+    # img = take_screenshot()
+    # screenshot_path = save_screenshot(img)
+
+    # macos 
+    img = macos_region_screenshot()
     img_base64 = image_to_base64(img)
 
     # Send to agent with conversation context
@@ -217,7 +231,7 @@ def main():
 
     # Start keyboard listener in background
     hotkey_listener = keyboard.GlobalHotKeys({
-        '<cmd>+<shift>+l': on_screenshot_hotkey
+        '<cmd>+<shift>+1': on_screenshot_hotkey
     })
     hotkey_listener.start()
 
