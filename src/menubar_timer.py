@@ -42,7 +42,7 @@ class CountdownTimer(rumps.App):
                 Notifier.notify(
                     "Time to take a break!",
                     title=f"✅ {self.session_name} Complete",
-                    sound="Glass"
+                    sound="Tink"
                 )
             except:
                 pass
@@ -69,7 +69,7 @@ class CountdownTimer(rumps.App):
                 Notifier.notify(
                     f"{self.motivation}",
                     title=f"⏰ {self.session_name} - 2 minutes left",
-                    sound="Glass"
+                    sound="Tink"
                 )
             except:
                 pass
