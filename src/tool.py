@@ -9,8 +9,9 @@ import requests
 from dotenv import load_dotenv
 from pynput import keyboard
 import sounddevice as sd
-from mlx_audio.tts.models.kokoro import KokoroPipeline
-from mlx_audio.tts.utils import load_model
+# Lazy import: TTS pipeline only loaded when needed
+# from mlx_audio.tts.models.kokoro import KokoroPipeline
+# from mlx_audio.tts.utils import load_model
 import threading
 import queue
 import warnings

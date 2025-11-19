@@ -20,9 +20,10 @@ from pynput import keyboard
 from pync import Notifier
 import rumps
 import argparse
+from Foundation import NSAppleScript
 
 # Suppress pynput keyboard errors (F11/F12 volume keys cause KeyError)
-# logging.getLogger('pynput').setLevel(logging.CRITIHello wait, what so the Mac has built in text to speech搜1C可以说中文吗？我靠，好搞笑，麦克搞半天麦克有自己的takes to speak，而且效果还不错，我操，这个破防了呀。
+# logging.getLogger('pynput').setLevel(logging.CRITICAL)
 
 
 class SimpleBackgroundHandler(rumps.App):
@@ -35,17 +36,16 @@ class SimpleBackgroundHandler(rumps.App):
             "/Users/xiaofanlu/Documents/github_repos/hackathon-umass/avatars/melina 2/melina-cute-256.png"
         )
 
-        # Import processor based on mode
-        if self.mode == 'simple':
-            from simple_classifier import shortcut_text, shortcut_screenshot
-            self.processor_text = shortcut_text
-            self.processor_screenshot = shortcut_screenshot
-            mode_name = "Simple Classifier"
-        else:  # agent mode
-            from manager_agent import shortcut_text, shortcut_screenshot
-            self.processor_text = shortcut_text
-            self.processor_screenshot = shortcut_screenshot
-            mode_name = "Manager Agent"
+        # Imports are now lazy-loaded to save memory
+        # from simple_classifier import shortcut_text as simple_text, shortcut_screenshot as simple_screenshot
+        # from manager_agent import shortcut_text as agent_text, shortcut_screenshot as agent_screenshot
+        
+        # self.simple_text = simple_text
+        # self.simple_screenshot = simple_screenshot
+        # self.agent_text = agent_text
+        # self.agent_screenshot = agent_screenshot
+        
+        mode_name = "Hybrid (Simple Default)"
 
         # Queues for both shortcuts
         self.text_queue = queue.Queue()
@@ -230,9 +230,21 @@ class SimpleBackgroundHandler(rumps.App):
                 self.notify("⏱️ 25-min countdown started", "Check menu bar")
                 return
 
-            # Normal text processing using selected processor
-            self.notify("Processing...", text[:50])
-            result = self.processor_text(text)
+            # Normal text processing
+            # Check for Agent Mode (starts with >)
+            if text.strip().startswith('>'):
+                real_text = text.strip()[1:].strip()
+                self.notify("Processing (Agent)...", real_text[:50])
+                # Lazy import
+                from manager_agent import shortcut_text as agent_text
+                result = agent_text(real_text)
+            else:
+                # Default: Simple Mode
+                self.notify("Processing (Simple)...", text[:50])
+                # Lazy import
+                from simple_classifier import shortcut_text as simple_text
+                result = simple_text(text)
+            
             self.notify("✅ Saved", f"{result['target']}")
 
         except Exception as e:
@@ -252,8 +264,20 @@ class SimpleBackgroundHandler(rumps.App):
     def _process_screenshot_async(self, screenshot_base64, comment):
         """Async screenshot processing"""
         try:
-            self.notify("Processing screenshot...", comment[:50] if comment else "")
-            result = self.processor_screenshot(screenshot_base64, comment or "")
+            # Check for Agent Mode (comment starts with >)
+            if comment and comment.strip().startswith('>'):
+                real_comment = comment.strip()[1:].strip()
+                self.notify("Processing screenshot (Agent)...", real_comment[:50])
+                # Lazy import
+                from manager_agent import shortcut_screenshot as agent_screenshot
+                result = agent_screenshot(screenshot_base64, real_comment)
+            else:
+                # Default: Simple Mode
+                self.notify("Processing screenshot (Simple)...", comment[:50] if comment else "")
+                # Lazy import
+                from simple_classifier import shortcut_screenshot as simple_screenshot
+                result = simple_screenshot(screenshot_base64, comment or "")
+                
             self.notify("✅ Saved", f"{result['target']}: {result['file']}")
 
         except Exception as e:
@@ -322,19 +346,19 @@ Shortcuts:
 
     print(f"""
 ╔══════════════════════════════════════════════════════════╗
-║         {mode_icon} {mode_name.upper():^44} ║
+║         📝 HYBRID MODE (Simple Default)                  ║
 ╚══════════════════════════════════════════════════════════╝
-
-Mode: {args.mode}
 
 Shortcuts:
 1. Cmd+Shift+E  → Quick text note
+                  (type '>' at start for Agent mode)
                   (type 'C' for 40min timer, 'S' for 25min timer)
 2. Cmd+Shift+4  → Regional screenshot + comment
+                  (type '>' in comment for Agent mode)
 
 Starting...
 """)
-    SimpleBackgroundHandler(mode=args.mode).run()
+    SimpleBackgroundHandler(mode='simple').run()
 
 
 if __name__ == "__main__":

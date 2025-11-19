@@ -1,49 +1,68 @@
 # How to Run Background Handler on Startup
 
-## Automatic Startup (Recommended)
+## Quick Commands
 
-The LaunchAgent file has been created at:
-`~/Library/LaunchAgents/com.classifier.background.plist`
-
-### To Enable Auto-Start:
-
-1. **Load the LaunchAgent:**
-   ```bash
-   launchctl load ~/Library/LaunchAgents/com.classifier.background.plist
-   ```
-
-2. **Verify it's running:**
-   ```bash
-   launchctl list | grep classifier
-   ```
-
-3. **Check logs (if needed):**
-   ```bash
-   tail -f ~/Documents/github_repos/hackathon-umass/logs/background_handler.log
-   ```
-
-### To Disable Auto-Start:
-
+### Stop the script:
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.classifier.background.plist
 ```
 
-### To Restart:
-
+### Start/Restart the script:
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.classifier.background.plist
 launchctl load ~/Library/LaunchAgents/com.classifier.background.plist
+```
+
+### Check if it's running:
+```bash
+launchctl list | grep classifier
+# Output should show: PID 0 com.classifier.background (0 = success)
+```
+
+---
+
+## First-Time Setup
+
+### 1. Grant Accessibility Permissions (REQUIRED)
+
+**The keyboard shortcuts won't work without this!**
+
+1. Open **System Settings** → **Privacy & Security** → **Accessibility**
+2. Click the **+** button (or lock icon to unlock)
+3. Press **Cmd+Shift+G** and navigate to:
+   ```
+   /Users/xiaofanlu/Documents/github_repos/hackathon-umass/.venv/bin/python3
+   ```
+4. Add it and enable the checkbox
+
+### 2. Start the LaunchAgent:
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.classifier.background.plist
+```
+
+### 3. Verify it's running:
+
+```bash
+launchctl list | grep classifier
+```
+
+### 4. Check logs (if needed):
+
+```bash
+tail -f ~/Documents/github_repos/hackathon-umass/logs/background_handler.log
+tail -f ~/Documents/github_repos/hackathon-umass/logs/background_handler.error.log
 ```
 
 ---
 
 ## Manual Startup (Alternative)
 
-If you prefer to start manually:
+If you prefer to start manually (for debugging):
 
 ```bash
-cd ~/Documents/github_repos/hackathon-umass/src
-python3 background_handler_simple.py
+cd ~/Documents/github_repos/hackathon-umass
+uv run src/background_handler_simple.py
 ```
 
 ---
@@ -62,18 +81,39 @@ python3 background_handler_simple.py
 
 ## Troubleshooting:
 
-### If shortcuts don't work:
-1. Check System Preferences → Security & Privacy → Privacy → Accessibility
-2. Make sure Terminal or Python has accessibility permissions
+### Shortcuts don't work:
+**Most common issue:** Missing Accessibility permissions
+1. Open **System Settings** → **Privacy & Security** → **Accessibility**
+2. Make sure Python has accessibility permissions:
+   ```
+   /Users/xiaofanlu/Documents/github_repos/hackathon-umass/.venv/bin/python3
+   ```
+3. Restart the LaunchAgent after granting permission
 
-### If it crashes on startup:
+### Script keeps crashing:
 ```bash
 # Check error logs
-cat ~/Documents/github_repos/hackathon-umass/logs/background_handler.error.log
+tail -20 ~/Documents/github_repos/hackathon-umass/logs/background_handler.error.log
+
+# Common errors:
+# - "ModuleNotFoundError" → Run: uv sync
+# - "Operation not permitted" → Grant Accessibility permissions
+# - "This process is not trusted" → Grant Accessibility permissions
 ```
 
-### To manually start in foreground (for debugging):
+### Kill all running instances:
 ```bash
-cd ~/Documents/github_repos/hackathon-umass/src
-python3 background_handler_simple.py
+pkill -f background_handler_simple
+```
+
+### Start manually for debugging:
+```bash
+cd ~/Documents/github_repos/hackathon-umass
+uv run src/background_handler_simple.py
+# Watch for errors in real-time
+```
+
+### Check what's actually running:
+```bash
+ps aux | grep background_handler
 ```

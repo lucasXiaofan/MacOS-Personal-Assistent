@@ -1,16 +1,14 @@
 """
-Two-Thread TTS Pipeline System
-================================
+Single-Thread TTS Pipeline System
+==================================
 
-This module implements a pipelined TTS system with two worker threads:
-1. Audio Generator Thread: Converts text to audio (CPU-intensive)
-2. Audio Playback Thread: Plays pre-generated audio (I/O-bound)
+This module implements a simple single-threaded TTS system:
+1. TTS Worker Thread: Converts text to audio AND plays it sequentially
 
-This eliminates gaps between audio playback by generating the next audio
-while the current one is playing.
+This prevents race conditions and memory issues from multi-threading.
 
 Architecture:
-    text_queue → [Generator Thread] → audio_queue → [Playback Thread] → Speaker
+    text_queue → [TTS Worker Thread: Generate → Play → Cleanup] → Speaker
 """
 
 import queue
@@ -21,6 +19,8 @@ import warnings
 import logging
 import re
 import sys
+import gc
+import time
 from mlx_audio.tts.models.kokoro import KokoroPipeline
 from mlx_audio.tts.utils import load_model
 
@@ -36,32 +36,73 @@ sd.default.prime_output_buffers_using_stream_callback = True
 
 
 class TTSPipeline:
-    """Two-thread TTS pipeline with separate generation and playback"""
+    """Single-threaded TTS pipeline - generates and plays audio sequentially"""
 
-    def __init__(self, model_id='prince-canuma/Kokoro-82M', default_voice='af_heart'):
+    def __init__(self, model_id='prince-canuma/Kokoro-82M', default_voice='af_heart', idle_timeout=300):
         """
         Initialize the TTS pipeline
 
         Args:
             model_id: HuggingFace model ID for TTS
             default_voice: Default voice to use for TTS
+            idle_timeout: Seconds of inactivity before unloading model (default: 300 = 5 min)
         """
-        print("🎤 Loading TTS model...")
+        print("🎤 Loading TTS model (INITIAL)...")
+        self.model_id = model_id
         self.model = load_model(model_id)
         self.pipeline = KokoroPipeline(lang_code='a', model=self.model, repo_id=model_id)
         self.default_voice = default_voice
-        print("✓ TTS model loaded successfully")
+        self.idle_timeout = idle_timeout
+        self.last_activity_time = time.time()
 
-        # Two separate queues
-        self.text_queue = queue.Queue()           # Raw text to process
-        self.audio_queue = queue.Queue(maxsize=3) # Pre-generated audio ready to play
+        # CRITICAL: Thread lock to prevent multiple model loads
+        self.model_lock = threading.Lock()
+
+        # Debug counter to track model loads
+        self.model_load_count = 1
+
+        print("✓ TTS model loaded successfully (load count: 1)")
+
+        # Single queue for text to process
+        self.text_queue = queue.Queue()
 
         # Stop event for graceful shutdown
         self.stop_event = threading.Event()
 
         # Worker threads
-        self.generator_thread = None
-        self.playback_thread = None
+        self.tts_worker_thread = None  # Single worker thread
+        self.idle_monitor_thread = None
+
+    def unload_model(self):
+        """Unload TTS model to free memory (thread-safe)"""
+        with self.model_lock:
+            if self.model is None:
+                return  # Already unloaded
+            print("🗑️  Unloading TTS model to free memory...")
+            self.model = None
+            self.pipeline = None
+            gc.collect()  # Force garbage collection
+            print("✓ TTS model unloaded, memory freed")
+
+    def _idle_monitor_worker(self):
+        """Monitor inactivity and unload model after timeout"""
+        print(f"⏱️  Idle monitor started (timeout: {self.idle_timeout}s)")
+
+        while not self.stop_event.is_set():
+            time.sleep(30)  # Check every 30 seconds
+
+            if self.model is None:
+                continue  # Model already unloaded
+
+            idle_time = time.time() - self.last_activity_time
+
+            if idle_time >= self.idle_timeout:
+                # Check if queue is empty
+                if self.text_queue.empty():
+                    print(f"💤 TTS idle for {int(idle_time)}s, unloading model...")
+                    self.unload_model()
+
+        print("⏱️  Idle monitor stopped")
 
     def sanitize_text(self, text):
         """Clean text for TTS to avoid phonemizer errors"""
@@ -83,26 +124,28 @@ class TTSPipeline:
 
         return text.strip()
 
-    def _audio_generator_worker(self):
-        """Thread 1: Generate audio from text"""
-        print("🎤 Audio generator thread started")
+    def _tts_worker(self):
+        """Single worker thread: Generate AND play audio sequentially"""
+        print("🎤 TTS worker thread started (single-threaded mode)")
 
         # Set thread priority on macOS
         try:
             import ctypes
             if sys.platform == 'darwin':
                 libc = ctypes.CDLL('/usr/lib/libc.dylib')
-                libc.pthread_setname_np(b'TTS_Generator')
+                libc.pthread_setname_np(b'TTS_Worker')
         except:
             pass
 
         while not self.stop_event.is_set():
+            audio_chunks = None
+            full_audio = None
+
             try:
                 # Get text from queue with timeout
                 item = self.text_queue.get(timeout=0.05)
 
                 if item is None:  # Poison pill
-                    self.audio_queue.put(None)
                     break
 
                 text, voice, speed = item
@@ -112,94 +155,96 @@ class TTSPipeline:
                     self.text_queue.task_done()
                     continue
 
-                # Generate audio (this takes time)
+                # Reload model if it was unloaded (with thread safety)
+                with self.model_lock:
+                    if self.model is None or self.pipeline is None:
+                        self.model_load_count += 1
+                        print(f"🔄 Reloading TTS model (load #{self.model_load_count})...")
+                        self.model = load_model(self.model_id)
+                        self.pipeline = KokoroPipeline(lang_code='a', model=self.model, repo_id=self.model_id)
+                        print(f"✓ TTS model reloaded (total loads: {self.model_load_count})")
+
+                # Update activity time
+                self.last_activity_time = time.time()
+
+                # STEP 1: Generate audio
                 audio_chunks = []
                 for _, _, audio in self.pipeline(text, voice=voice, speed=speed):
                     if self.stop_event.is_set():
                         break
                     audio_chunks.append(audio[0])
 
-                # Concatenate and queue for playback
-                if audio_chunks and not self.stop_event.is_set():
-                    full_audio = np.concatenate(audio_chunks, axis=0)
-                    # Put generated audio in playback queue
-                    self.audio_queue.put(full_audio)
+                if not audio_chunks or self.stop_event.is_set():
+                    self.text_queue.task_done()
+                    continue
+
+                # STEP 2: Concatenate
+                full_audio = np.concatenate(audio_chunks, axis=0)
+
+                # STEP 3: Delete chunks immediately
+                del audio_chunks
+                audio_chunks = None
+                gc.collect()
+
+                # STEP 4: Play audio (blocking - wait until done)
+                sd.play(
+                    full_audio,
+                    samplerate=24000,
+                    blocksize=2048,
+                    blocking=True
+                )
+                sd.wait()  # Wait for playback to complete
+                sd.stop()  # Explicitly stop and release buffers
+
+                # STEP 5: Delete audio array immediately after playback
+                del full_audio
+                full_audio = None
+
+                # STEP 6: Force garbage collection
+                gc.collect()
 
                 self.text_queue.task_done()
 
             except queue.Empty:
                 continue
             except Exception as e:
-                print(f"⚠️ Generator error: {e}")
+                print(f"⚠️ TTS worker error: {e}")
+                import traceback
+                traceback.print_exc()
                 try:
+                    # Clean up on error
+                    if audio_chunks is not None:
+                        del audio_chunks
+                    if full_audio is not None:
+                        del full_audio
+                    gc.collect()
                     self.text_queue.task_done()
                 except:
                     pass
 
-        print("🎤 Audio generator thread stopped")
-
-    def _audio_playback_worker(self):
-        """Thread 2: Play pre-generated audio"""
-        print("🔊 Audio playback thread started")
-
-        # Set thread priority on macOS
-        try:
-            import ctypes
-            if sys.platform == 'darwin':
-                libc = ctypes.CDLL('/usr/lib/libc.dylib')
-                libc.pthread_setname_np(b'TTS_Playback')
-        except:
-            pass
-
-        while not self.stop_event.is_set():
-            try:
-                # Get pre-generated audio (this is fast)
-                audio = self.audio_queue.get(timeout=0.05)
-
-                if audio is None:  # Poison pill
-                    break
-
-                # Play immediately (while next audio is being generated)
-                sd.play(
-                    audio,
-                    samplerate=24000,
-                    blocksize=2048,
-                    blocking=True  # Block only playback thread
-                )
-                sd.sleep(5)  # Small delay for device readiness
-
-                self.audio_queue.task_done()
-
-            except queue.Empty:
-                continue
-            except Exception as e:
-                print(f"⚠️ Playback error: {e}")
-                try:
-                    self.audio_queue.task_done()
-                except:
-                    pass
-
-        print("🔊 Audio playback thread stopped")
+        print("🎤 TTS worker thread stopped")
 
     def start(self):
-        """Start both worker threads"""
-        if self.generator_thread is None or not self.generator_thread.is_alive():
-            self.generator_thread = threading.Thread(
-                target=self._audio_generator_worker,
+        """Start TTS worker thread and idle monitor"""
+        # Start single TTS worker thread
+        if self.tts_worker_thread is None or not self.tts_worker_thread.is_alive():
+            self.tts_worker_thread = threading.Thread(
+                target=self._tts_worker,
                 daemon=True,
-                name='TTS-Generator'
+                name='TTS-Worker'
             )
-            self.generator_thread.start()
+            self.tts_worker_thread.start()
 
-        if self.playback_thread is None or not self.playback_thread.is_alive():
-            self.playback_thread = threading.Thread(
-                target=self._audio_playback_worker,
+        # Start idle monitor thread
+        if self.idle_monitor_thread is None or not self.idle_monitor_thread.is_alive():
+            self.idle_monitor_thread = threading.Thread(
+                target=self._idle_monitor_worker,
                 daemon=True,
-                name='TTS-Playback'
+                name='TTS-IdleMonitor'
             )
-            self.playback_thread.start()
+            self.idle_monitor_thread.start()
 
-        print("✓ TTS pipeline started")
+        print("✓ TTS pipeline started (single-threaded mode)")
 
     def queue_text(self, text, voice=None, speed=1.1):
         """
@@ -216,40 +261,48 @@ class TTSPipeline:
         if cleaned_text and len(cleaned_text) >= 10:
             v = voice if voice else self.default_voice
             self.text_queue.put((cleaned_text, v, speed))
+            # Update activity time when new text is queued
+            self.last_activity_time = time.time()
 
     def stop(self):
-        """Stop both worker threads gracefully"""
+        """Stop TTS worker thread gracefully"""
         print("🛑 Stopping TTS pipeline...")
         self.stop_event.set()
 
-        # Send poison pills
+        # Send poison pill
         self.text_queue.put(None)
-        self.audio_queue.put(None)
 
         # Wait for threads to finish
-        if self.generator_thread:
-            self.generator_thread.join(timeout=2)
-        if self.playback_thread:
-            self.playback_thread.join(timeout=2)
+        if self.tts_worker_thread:
+            self.tts_worker_thread.join(timeout=2)
+        if self.idle_monitor_thread:
+            self.idle_monitor_thread.join(timeout=2)
 
         print("✓ TTS pipeline stopped")
 
     def wait_until_done(self):
-        """Wait until all queued audio has been played"""
+        """Wait until all queued text has been spoken"""
         self.text_queue.join()
-        self.audio_queue.join()
 
 
 # Global instance (singleton pattern)
 _tts_pipeline = None
+_tts_pipeline_lock = threading.Lock()
 
 
 def get_tts_pipeline():
-    """Get or create the global TTS pipeline instance"""
+    """Get or create the global TTS pipeline instance (thread-safe singleton)"""
     global _tts_pipeline
+
+    # Double-checked locking for thread safety
     if _tts_pipeline is None:
-        _tts_pipeline = TTSPipeline()
-        _tts_pipeline.start()
+        with _tts_pipeline_lock:
+            # Check again inside lock
+            if _tts_pipeline is None:
+                print("🎤 Creating TTS pipeline singleton...")
+                _tts_pipeline = TTSPipeline()
+                _tts_pipeline.start()
+
     return _tts_pipeline
 
 
@@ -274,7 +327,7 @@ def wait_tts_done():
         _tts_pipeline.wait_until_done()
 
 
-# Auto-start on import (optional, can be removed if you prefer manual start)
-if __name__ != "__main__":
-    # Auto-initialize when imported as a module
-    get_tts_pipeline()
+# Auto-start DISABLED to save memory
+# TTS pipeline will only load when actually used
+# if __name__ != "__main__":
+#     get_tts_pipeline()

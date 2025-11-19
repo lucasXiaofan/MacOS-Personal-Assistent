@@ -10,6 +10,7 @@ This script implements a manager/worker agent architecture:
 
 import os
 import json
+import gc
 from openai import OpenAI
 from dotenv import load_dotenv
 from tool import *
