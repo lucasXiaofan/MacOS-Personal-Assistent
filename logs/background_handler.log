@@ -697,3 +697,127 @@ Starting...
 🎤 Loading TTS model (INITIAL)...
 🎤 Creating TTS pipeline singleton...
 🎤 Loading TTS model (INITIAL)...
+🎤 Loading TTS model (Singleton)...
+
+╔══════════════════════════════════════════════════════════╗
+║         📝 HYBRID MODE (Simple Default)                  ║
+╚══════════════════════════════════════════════════════════╝
+
+Shortcuts:
+1. Cmd+Shift+E  → Quick text note
+                  (type '>' at start for Agent mode)
+                  (type 'C' for 40min timer, 'S' for 25min timer)
+2. Cmd+Shift+4  → Regional screenshot + comment
+                  (type '>' in comment for Agent mode)
+
+Starting...
+
+✅ Shortcuts ready (Hybrid (Simple Default) mode):
+   Cmd+Shift+E: Quick text note (type 'C' for 40min timer)
+   Cmd+Shift+4: Regional screenshot + comment
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+
+============================================================
+🎯 SIMPLE CLASSIFIER
+============================================================
+📝 Text-only input - skipping AI classification
+📋 Target: diary
+✅ Updated: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-11-23.md
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⏱️  Starting 25-minute Pomodoro...
+✅ Timer started: 25 minutes
+
+📸 SCREENSHOT SHORTCUT PRESSED!
+📋 Screenshot copied to clipboard
+💬 Showing screenshot comment dialog...
+You are a research paper tracking specialist. Manager will simply tell you which paper to track.
+
+**Your 5-step workflow:**
+
+1. **Search for Paper Metadata**
+   - Use brave_search to find:
+     * Official paper URL (arXiv, conference page, etc.)
+     * BibTeX formatted citation
+     * Authors, affiliations, date, venue
+     * Abstract/summary
+
+2. **Search for GitHub Repository**
+   - Use brave_search: "[paper_title] github repository"
+   - Look for official code implementation
+   - Note "Not found" if none exists
+
+3. **Create Paper Tracking File**
+   - Use bash_command to create markdown file at:
+     `/Users/xiaofanlu/Documents/road/FLOW/areas/papers/[paper_name].md`
+   - **MUST follow this template structure exactly:**
+
+# paper title
+
+## Basic Info
+- **Authors**: authors1, authors2...
+- **Affiliation**: xxx
+- **Date**: xxx. x, 202x
+- **Url**: paper url, arix or pdf
+- **GitHub**: xxx
+
+## BibTeX Citation
+```
+@misc{xu2025tinymodelbiglogic,
+  title={Tiny Model, Big Logic: Diversity-Driven Optimization Elicits Large-Model Reasoning Ability in VibeThinker-1.5B},
+  author={Sen Xu and Yi Zhou and Wei Wang and Jixin Min and Zhibin Yin and Yingwei Dai and Shixi Liu and Lianyu Pang and Yirong Chen and Junlin Zhang},
+  year={2025},
+  eprint={2511.06221},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI},
+  url={https://arxiv.org/abs/2511.06221},
+}
+```
+
+
+## Summary of the paper
+
+
+## Lucas' Review (time to review)
+
+---
+
+
+4. **Set Review Reminder**
+   - Use create_task:
+     * name: "Review paper: [paper_title]"
+     * tag: "paper_review"
+     * due_date: 2 days from Current Date: 2025-11-23 (Sunday)
+Current Time: 16:27:35
+     * note_directory: path to paper markdown file
+     * comments: "Paper tracking file created"
+
+5. **Log Completion**
+   - Use log_activity:
+     * summary: "Tracked paper: [paper_title]"
+     * files_changed: [path to markdown file]
+
+Current date: Current Date: 2025-11-23 (Sunday)
+Current Time: 16:27:35
+
+Complete all 5 steps thoroughly.
+
+
+============================================================
+🎯 MANAGER AGENT
+============================================================
+
+🔨 Manager tools: ['delegate_to_agent', 'bash_command', 'create_task', 'start_session_timer']
+
+==================================================
+MANAGER ITER 1
+==================================================
+I can't identify any people or anime in the images you sent. It looks🎤 Loading TTS model (Singleton)...
+✓ TTS model loaded successfully
+🎤 TTS Generation worker started
+🔊 TTS Playback worker started
+✓ TTS pipeline started (Dual-thread mode)
+ like a beautiful forest scene with several large trees! Is there anything else I can help you with?🎤 Loading TTS model (Singleton)...

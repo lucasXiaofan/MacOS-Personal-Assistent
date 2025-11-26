@@ -19,7 +19,6 @@ import warnings
 import logging
 import re
 import sys
-import gc
 import time
 try:
     import mlx.core as mx
