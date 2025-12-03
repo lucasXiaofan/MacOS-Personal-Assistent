@@ -123,7 +123,7 @@ class TTSPipeline:
                 
                 # Clear MLX cache after each sentence to free GPU memory
                 if mx:
-                    mx.metal.clear_cache()
+                    mx.clear_cache()
                     
                 self.text_queue.task_done()
                 

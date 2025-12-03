@@ -170,7 +170,7 @@ tools = [
                     "agent_name": {
                         "type": "string",
                         "description": "Name of worker agent to delegate to",
-                        "enum": ["paper_agent", "task_agent", "session_agent"]
+                        "enum": ["paper_agent", "pitch_coach"]
                     },
                     "task_description": {
                         "type": "string",
