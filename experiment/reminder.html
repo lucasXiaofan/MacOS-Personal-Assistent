@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucas: Memento Mori</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --panel-bg: rgba(20, 20, 20, 0.6);
+            --border-color: #333;
+            --accent-red: #ff3333;
+            --accent-gold: #ffd700;
+            --accent-cyan: #00ffff;
+            --accent-green: #33ff33;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888;
+            --font-main: 'Inter', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(255, 51, 51, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(0, 255, 255, 0.05) 0%, transparent 20%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* --- UTILS --- */
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .glass-panel:hover {
+            border-color: #555;
+        }
+
+        h2,
+        h3 {
+            margin: 0 0 15px 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mono {
+            font-family: var(--font-code);
+        }
+
+        /* --- HEADER: TIME LEFT --- */
+        .header-panel {
+            border-top: 2px solid var(--accent-red);
+            text-align: center;
+        }
+
+        .life-clock {
+            font-family: var(--font-code);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            margin: 10px 0;
+        }
+
+        .life-label {
+            color: var(--accent-red);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* --- VISUALIZATION --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            display: block;
+        }
+
+        .stat-name {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .progress-bar-container {
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+            width: 0%;
+            transition: width 1s ease-out;
+        }
+
+        /* --- QUOTES --- */
+        .quote-panel {
+            border-left: 3px solid var(--accent-gold);
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .quote-text-en {
+            font-size: 1.1rem;
+            line-height: 1.4;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .quote-text-cn {
+            font-size: 0.95rem;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+
+        .quote-source {
+            font-family: var(--font-code);
+            font-size: 0.75rem;
+            color: var(--accent-gold);
+            text-align: right;
+        }
+
+        /* --- TODOS --- */
+        .todo-panel {
+            border-left: 3px solid var(--accent-cyan);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #333;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: var(--font-main);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        button.btn-primary {
+            background: var(--accent-cyan);
+            color: #000;
+            border: none;
+            padding: 0 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button.btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .todo-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .todo-item {
+            background: rgba(255, 255, 255, 0.02);
+            margin-bottom: 8px;
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .todo-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #333;
+        }
+
+        .todo-item.completed {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+
+        .todo-text {
+            cursor: pointer;
+            flex-grow: 1;
+        }
+
+        .todo-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            margin-left: 8px;
+        }
+
+        .todo-actions button:hover {
+            opacity: 1;
+        }
+
+        /* --- BOTTOM: REFLECTION --- */
+        .reflection-panel {
+            border-left: 3px solid var(--accent-green);
+        }
+
+        textarea.journal {
+            width: 100%;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #333;
+            color: #ccc;
+            padding: 10px;
+            border-radius: 6px;
+            resize: none;
+            font-family: var(--font-main);
+            margin-bottom: 10px;
+        }
+
+        .emergency-btn {
+            background: transparent;
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        .emergency-btn:hover {
+            background: var(--accent-red);
+            color: #000;
+        }
+
+        /* --- MODAL --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #111;
+            border: 1px solid var(--accent-red);
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 0 50px rgba(255, 51, 51, 0.2);
+        }
+
+        .modal-header {
+            color: var(--accent-red);
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .modal-body {
+            color: #ddd;
+            line-height: 1.6;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .modal-body h4 {
+            color: #fff;
+            margin-top: 20px;
+        }
+
+        .close-modal {
+            margin-top: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- HEADER -->
+        <div class="glass-panel header-panel">
+            <div class="life-label">Life Remaining (Estimate: 80 Years)</div>
+            <div class="life-clock" id="life-clock">--:--:--:--</div>
+            <div id="sarcasm-banner"
+                style="color: var(--accent-red); font-size: 0.9rem; margin-top: 10px; font-weight: 600;"></div>
+        </div>
+
+        <!-- STATS -->
+        <div class="glass-panel">
+            <h2><span>Visualization</span> <span style="font-size:0.7rem; opacity:0.5">DATA DRIVEN</span></h2>
+
+            <!-- Age 35 Countdown -->
+            <div
+                style="text-align: center; margin-bottom: 20px; padding: 10px; background: rgba(255, 215, 0, 0.05); border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.2);">
+                <div
+                    style="color: var(--accent-gold); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px;">
+                    Countdown to Age 35 (Peak Youth End)</div>
+                <div id="age35-clock" class="mono"
+                    style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-top: 5px;">--:--:--:--</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-value" id="master-weeks">--</span>
+                    <span class="stat-name">Weekends Left (Master's)</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="days-to-35">--</span>
+                    <span class="stat-name">Days to Age 35</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="overdue-count" style="color: var(--accent-red)">0</span>
+                    <span class="stat-name">Overdue Tasks</span>
+                </div>
+            </div>
+
+            <!-- Master's Progress Grid -->
+            <div style="margin-top: 20px;">
+                <div style="display:flex; justify-content:space-between; align-items: flex-end; margin-bottom: 10px;">
+                    <span style="font-size:0.8rem; color:#888;">Master's Journey (Day Grid)</span>
+                    <span id="master-percent-text"
+                        style="font-size:0.9rem; color: var(--accent-cyan); font-weight: bold;">0%</span>
+                </div>
+
+                <!-- The Grid Container -->
+                <div id="life-grid"
+                    style="display: flex; flex-wrap: wrap; gap: 3px; max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                    <!-- Grid items injected by JS -->
+                </div>
+
+                <div
+                    style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #555; margin-top: 5px;">
+                    <span>Start: Sep 2025</span>
+                    <span>End: Jun 2027</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUOTE -->
+        <div class="glass-panel quote-panel">
+            <div class="quote-text-en" id="quote-en">Loading wisdom...</div>
+            <div class="quote-text-cn" id="quote-cn"></div>
+            <div class="quote-source" id="quote-source"></div>
+        </div>
+
+        <!-- TODOS -->
+        <div class="glass-panel todo-panel">
+            <h2><span>Mission Objectives</span> <span class="mono" style="color:var(--accent-cyan)">ACTIVE</span></h2>
+
+            <div class="input-row">
+                <input type="text" id="todo-input" placeholder="New Objective...">
+                <button class="btn-primary" onclick="addTodo()">ADD</button>
+            </div>
+
+            <ul class="todo-list" id="todo-list">
+                <!-- Items injected here -->
+            </ul>
+        </div>
+
+        <!-- REFLECTION & EMERGENCY -->
+        <div class="glass-panel reflection-panel">
+            <h2><span>Anchor & Gratitude</span></h2>
+            <textarea class="journal" id="journal-input" placeholder="Dump worries or record gratitude..."></textarea>
+            <button class="emergency-btn" onclick="openEmergencyModal()">⚠️ Emergency: Urge / Weakness Detected</button>
+        </div>
+
+    </div>
+
+    <!-- EMERGENCY MODAL -->
+    <div class="modal" id="emergency-modal">
+        <div class="modal-content">
+            <div class="modal-header">Protocol: Iron Will</div>
+            <div class="modal-body">
+                <p style="color: var(--accent-red); font-weight: bold;">STOP. BREATHE. READ.</p>
+
+                <h4>1. The Reality Check</h4>
+                <p>You pay $50k/year at UMass. You are here to build an AI Agent, to master skills, not to watch pixels
+                    on a screen.</p>
+
+                <h4>2. The Paradox</h4>
+                <p>Porn is <b>taking</b>. Relationship is <b>interacting</b>. Don't castrate yourself into a statue.
+                    Real connection requires vulnerability, not a secret shame.</p>
+
+                <h4>3. Immediate Action</h4>
+                <ul>
+                    <li>Drop the phone/mouse. Stand up.</li>
+                    <li>Pray: "Lord, if you allow me to fail, stay with me. If you want me to win, give me strength for
+                        10 minutes."</li>
+                    <li>Do 20 Pushups or Walk Outside (even if it rains).</li>
+                </ul>
+
+                <h4>4. Bible Anchor</h4>
+                <p class="mono" style="font-size: 0.9rem; color: var(--accent-gold);">"No temptation has overtaken you
+                    except such as is common to man... God is faithful, who will not allow you to be tempted beyond what
+                    you are able." (1 Cor 10:13)</p>
+            </div>
+            <button class="close-modal" onclick="closeEmergencyModal()">I Am In Control</button>
+        </div>
+    </div>
+
+    <!-- Load Config and Data -->
+    <script src="config.js"></script>
+
+    <script>
+        // --- INIT ---
+        function init() {
+            // Check if config loaded
+            if (typeof USER_CONFIG === 'undefined' || typeof QUOTES_DB === 'undefined') {
+                alert("Error: config.js not loaded. Please ensure config.js is in the same folder.");
+                return;
+            }
+
+            renderRandomQuote();
+            updateTime();
+            setInterval(updateTime, 1000);
+            renderTodos();
+        }
+
+        // --- LOGIC: TIME ---
+        function updateTime() {
+            const now = new Date();
+
+            // Parse Config Dates
+            const dob = new Date(USER_CONFIG.dob);
+            const masterEnd = new Date(USER_CONFIG.master_end);
+            const masterStart = new Date(USER_CONFIG.master_start);
+
+            // Calculate Age 80 Date
+            const age80Date = new Date(dob);
+            age80Date.setFullYear(dob.getFullYear() + USER_CONFIG.life_expectancy_years);
+
+            // Calculate Age 35 Date
+            const age35Date = new Date(dob);
+            age35Date.setFullYear(dob.getFullYear() + USER_CONFIG.peak_youth_end_age);
+
+            // Life Clock (Countdown to 80)
+            const diff = age80Date - now;
+            if (diff > 0) {
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                document.getElementById('life-clock').innerText =
+                    `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            } else {
+                document.getElementById('life-clock').innerText = "TIME EXPIRED";
+                document.getElementById('life-clock').style.color = "red";
+            }
+
+            // Age 35 Clock
+            const diff35 = age35Date - now;
+            if (diff35 > 0) {
+                const days = Math.floor(diff35 / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff35 % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff35 % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff35 % (1000 * 60)) / 1000);
+                document.getElementById('age35-clock').innerText =
+                    `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            } else {
+                document.getElementById('age35-clock').innerText = "PEAK YOUTH ENDED";
+                document.getElementById('age35-clock').style.color = "red";
+            }
+
+            // Stats
+            const msPerWeek = 1000 * 60 * 60 * 24 * 7;
+            const weekendsLeft = Math.floor((masterEnd - now) / msPerWeek);
+            document.getElementById('master-weeks').innerText = Math.max(0, weekendsLeft);
+
+            const daysTo35 = Math.floor((age35Date - now) / (1000 * 60 * 60 * 24));
+            document.getElementById('days-to-35').innerText = daysTo35;
+
+            // Grid & Progress
+            renderLifeGrid(masterStart, masterEnd);
+        }
+
+        let gridRendered = false;
+        function renderLifeGrid(start, end) {
+            // Only render once to save performance, unless we want real-time day updates (which is fine to re-render but maybe heavy)
+            // Let's check if we need to re-render.
+            // Actually, for a simple grid, re-rendering every second is overkill.
+            // Let's render it once on init or if date changes.
+            // For now, let's just update the "active" cell if it exists.
+
+            if (gridRendered) return;
+
+            const now = new Date();
+            const totalTime = end - start;
+            const elapsed = now - start;
+            let percent = (elapsed / totalTime) * 100;
+            percent = Math.min(Math.max(percent, 0), 100).toFixed(1);
+
+            document.getElementById('master-percent-text').innerText = percent + "%";
+
+            // Generate Grid
+            const gridContainer = document.getElementById('life-grid');
+            gridContainer.innerHTML = "";
+
+            const oneDay = 1000 * 60 * 60 * 24;
+            const totalDays = Math.ceil((end - start) / oneDay);
+            const daysPassed = Math.floor((now - start) / oneDay);
+
+            // We want a square-ish grid. 
+            // Total days ~ 600. 
+            // 30 columns -> 20 rows.
+            // Let's just flex-wrap 10px boxes.
+
+            for (let i = 0; i < totalDays; i++) {
+                const div = document.createElement('div');
+                div.style.width = "8px";
+                div.style.height = "8px";
+                div.style.borderRadius = "1px";
+
+                if (i < daysPassed) {
+                    // Past (Completed) - Dim Cyan/Green to show progress
+                    div.style.backgroundColor = "rgba(0, 255, 255, 0.3)";
+                } else if (i === daysPassed) {
+                    // Today - Bright Cyan
+                    div.style.backgroundColor = "var(--accent-cyan)";
+                    div.style.boxShadow = "0 0 5px var(--accent-cyan)";
+                } else {
+                    // Future (Remaining) - Very dark/empty
+                    div.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+                }
+
+                gridContainer.appendChild(div);
+            }
+            gridRendered = true;
+        }
+
+        // --- LOGIC: QUOTES ---
+        function renderRandomQuote() {
+            // 1. Sarcasm Banner
+            const sarcasms = QUOTES_DB.sarcasm || [];
+            if (sarcasms.length > 0) {
+                const s = sarcasms[Math.floor(Math.random() * sarcasms.length)];
+                document.getElementById('sarcasm-banner').innerText = `>> ${s.en}`;
+            }
+
+            // 2. Main Quote (Mix of Wake Up, Inspire, Bible)
+            const categories = ['wake_up', 'inspire', 'bible'];
+            const cat = categories[Math.floor(Math.random() * categories.length)];
+            const list = QUOTES_DB[cat];
+
+            if (list && list.length > 0) {
+                const q = list[Math.floor(Math.random() * list.length)];
+                document.getElementById('quote-en').innerText = q.en;
+                document.getElementById('quote-cn').innerText = q.cn;
+                document.getElementById('quote-source').innerText = `// ${q.source}`;
+            }
+        }
+
+        // --- LOGIC: TODOS ---
+        let todos = JSON.parse(localStorage.getItem('lucasTodos_v2')) || [
+            { text: "Don't open YouTube", done: false, date: new Date().toISOString() }
+        ];
+
+        function renderTodos() {
+            const list = document.getElementById('todo-list');
+            list.innerHTML = "";
+            let overdue = 0;
+            const now = new Date();
+
+            todos.forEach((todo, index) => {
+                const li = document.createElement('li');
+                li.className = `todo-item ${todo.done ? 'completed' : ''}`;
+
+                // Simple overdue check (if created > 24h ago and not done)
+                const created = new Date(todo.date || now);
+                const isOld = (now - created) > (1000 * 60 * 60 * 24);
+                if (isOld && !todo.done) overdue++;
+
+                li.innerHTML = `
+                    <span class="todo-text" onclick="toggleTodo(${index})">
+                        ${todo.text} 
+                        ${isOld && !todo.done ? '<span style="color:var(--accent-red); font-size:0.7rem;">(OVERDUE)</span>' : ''}
+                    </span>
+                    <div class="todo-actions">
+                        <button onclick="deleteTodo(${index})" style="color:var(--accent-red)">✖</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+
+            document.getElementById('overdue-count').innerText = overdue;
+            localStorage.setItem('lucasTodos_v2', JSON.stringify(todos));
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todo-input');
+            const text = input.value.trim();
+            if (text) {
+                todos.unshift({ text: text, done: false, date: new Date().toISOString() });
+                input.value = "";
+                renderTodos();
+            }
+        }
+
+        function toggleTodo(index) {
+            todos[index].done = !todos[index].done;
+            renderTodos();
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            renderTodos();
+        }
+
+        document.getElementById('todo-input').addEventListener("keypress", (e) => {
+            if (e.key === "Enter") addTodo();
+        });
+
+        // --- LOGIC: MODAL ---
+        function openEmergencyModal() {
+            document.getElementById('emergency-modal').style.display = 'flex';
+        }
+
+        function closeEmergencyModal() {
+            document.getElementById('emergency-modal').style.display = 'none';
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+
+</html>

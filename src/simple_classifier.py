@@ -212,57 +212,28 @@ def process(text_input=None, image_base64=None):
     """
 
     print("\n" + "="*60)
-    print("🎯 SIMPLE CLASSIFIER")
+    print("🎯 SIMPLE CLASSIFIER (No LLM)")
     print("="*60)
 
-    # If text-only (no image), skip AI and just append text directly
-    if text_input and not image_base64:
-        print("📝 Text-only input - skipping AI classification")
-
-        # Simple heuristic: if mentions research/paper/uncertainty, go to research
-        if any(word in text_input.lower() for word in ['research', 'paper', 'uncertainty', 'experiment', 'ml', 'ai']):
-            file_path = RESEARCH_FILE
-            target = 'research'
-        else:
-            file_path = ensure_diary()
-            target = 'diary'
-
-        print(f"📋 Target: {target}")
-
-        # Append just the user text, no AI analysis
-        append_to_file(file_path, text_input, None, None)
-
-        return {
-            "target": target,
-            "file": file_path,
-            "user_comment": text_input,
-            "ai_content": None,
-            "image": None
-        }
-
-    # For images, use AI classification
-    result = classify(text_input, image_base64,model="x-ai/grok-4-fast")
-    print(f"📋 Target: {result['target']}")
-
-    # Save image if provided (always to diary assets)
+    # Always target diary
+    target = 'diary'
+    file_path = ensure_diary()
+    
+    # Save image if provided
     image_rel_path = None
     if image_base64:
         image_rel_path = save_image(image_base64)
 
-    # Determine file
-    if result['target'] == 'research':
-        file_path = RESEARCH_FILE
-    else:
-        file_path = ensure_diary()
+    print(f"📋 Target: {target}")
 
-    # Append with separated user comment and AI analysis
-    append_to_file(file_path, text_input, result['content'], image_rel_path)
+    # Append to file (no AI content)
+    append_to_file(file_path, text_input, None, image_rel_path)
 
     return {
-        "target": result['target'],
+        "target": target,
         "file": file_path,
         "user_comment": text_input,
-        "ai_content": result['content'],
+        "ai_content": None,
         "image": image_rel_path
     }
 

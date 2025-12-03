@@ -215,18 +215,24 @@ class SimpleBackgroundHandler(rumps.App):
     def _process_text_async(self, text):
         """Async text processing with timer shortcuts"""
         try:
-            # Check for timer shortcuts (C = 40min countdown) - only in simple mode
-            if self.mode == 'simple' and text.strip().upper() == 'C':
-                print("⏱️  Starting 40-minute countdown...")
-                self.start_countdown_timer(40, "Focus Session")
-                self.notify("⏱️ 40-min countdown started", "Check menu bar")
-                return
-
-            # Check for S shortcut (25min Pomodoro) - only in simple mode
-            if self.mode == 'simple' and text.strip().upper() == 'S':
+            # Check for timer shortcuts
+            text_stripped = text.strip().lower()
+            
+            # S = 25min Pomodoro
+            if self.mode == 'simple' and text_stripped == 's':
                 print("⏱️  Starting 25-minute Pomodoro...")
                 self.start_countdown_timer(25, "Pomodoro")
                 self.notify("⏱️ 25-min countdown started", "Check menu bar")
+                return
+
+            # C<number> = Custom countdown (e.g., c10, c40, c50)
+            import re
+            match = re.match(r'^c(\d+)$', text_stripped)
+            if self.mode == 'simple' and match:
+                minutes = int(match.group(1))
+                print(f"⏱️  Starting {minutes}-minute countdown...")
+                self.start_countdown_timer(minutes, "Focus Session")
+                self.notify(f"⏱️ {minutes}-min countdown started", "Check menu bar")
                 return
 
             # Normal text processing
@@ -244,7 +250,7 @@ class SimpleBackgroundHandler(rumps.App):
                 from simple_classifier import shortcut_text as simple_text
                 result = simple_text(text)
             
-            self.notify("✅ Saved", f"{result['target']}")
+            self.notify(f"✅ Saved to {result['target']}", "Click to open", open_path=result['file'])
 
         except Exception as e:
             print(f"❌ Error: {e}")
@@ -277,7 +283,7 @@ class SimpleBackgroundHandler(rumps.App):
                 from simple_classifier import shortcut_screenshot as simple_screenshot
                 result = simple_screenshot(screenshot_base64, comment or "")
                 
-            self.notify("✅ Saved", f"{result['target']}: {result['file']}")
+            self.notify(f"✅ Saved to {result['target']}", "Click to open", open_path=result['file'])
 
         except Exception as e:
             print(f"❌ Error: {e}")
@@ -302,17 +308,49 @@ class SimpleBackgroundHandler(rumps.App):
         except Exception as e:
             print(f"❌ Timer error: {e}")
 
-    def notify(self, message, title="Classifier"):
-        """Send notification with subtle sound"""
+    def notify(self, message, title="Classifier", open_path=None):
+        """Send notification using terminal-notifier directly"""
         try:
-            Notifier.notify(
-                message,
-                title=title,
-                contentImage=self.avatar_path if os.path.exists(self.avatar_path) else None,
-                sound="Tink"  # Subtle, natural sound
-            )
+            cmd = [
+                'terminal-notifier',
+                '-message', message,
+                '-title', title,
+                '-sound', 'Tink'
+            ]
+            
+            # Add avatar if it exists
+            if os.path.exists(self.avatar_path):
+                cmd.extend(['-contentImage', self.avatar_path])
+                
+            # Add open action if path provided
+            if open_path:
+                abs_path = os.path.abspath(open_path)
+                
+                # If it's a markdown file, try to open with Obsidian URI scheme
+                if abs_path.endswith('.md'):
+                    # obsidian://open?path=/full/path/to/file.md
+                    # This forces Obsidian to open it directly
+                    import urllib.parse
+                    encoded_path = urllib.parse.quote(abs_path)
+                    uri = f"obsidian://open?path={encoded_path}"
+                    cmd.extend(['-open', uri])
+                else:
+                    # Default file opening
+                    cmd.extend(['-open', f'file://{abs_path}'])
+
+            # Run command
+            subprocess.run(cmd, check=False, capture_output=True)
+            
         except Exception as e:
             print(f"⚠️  Notification failed: {e}")
+            # Fallback to AppleScript if terminal-notifier fails
+            try:
+                subprocess.run([
+                    'osascript', '-e', 
+                    f'display notification "{message}" with title "{title}"'
+                ])
+            except:
+                pass
 
 
 def main():
