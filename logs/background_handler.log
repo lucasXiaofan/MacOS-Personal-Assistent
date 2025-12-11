@@ -829,3 +829,329 @@ I can't identify any people or anime in the images you sent. It looks🎤 Loadin
 🎤 Loading TTS model (Singleton)...
 🎤 Loading TTS model (Singleton)...
 🎤 Loading TTS model (Singleton)...
+
+╔══════════════════════════════════════════════════════════╗
+║         📝 HYBRID MODE (Simple Default)                  ║
+╚══════════════════════════════════════════════════════════╝
+
+Shortcuts:
+1. Cmd+Shift+E  → Quick text note
+                  (type '>' at start for Agent mode)
+                  (type 'C' for 40min timer, 'S' for 25min timer)
+2. Cmd+Shift+4  → Regional screenshot + comment
+                  (type '>' in comment for Agent mode)
+
+Starting...
+
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+✅ Shortcuts ready (Hybrid (Simple Default) mode):
+   Cmd+Shift+E: Quick text note (type 'C' for 40min timer)
+   Cmd+Shift+4: Regional screenshot + comment
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+============================================================
+🎯 SIMPLE CLASSIFIER (No LLM)
+============================================================
+📔 Created diary: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-12-04.md
+📋 Target: diary
+✅ Updated: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-12-04.md
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+============================================================
+🎯 SIMPLE CLASSIFIER (No LLM)
+============================================================
+📋 Target: diary
+✅ Updated: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-12-04.md
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+============================================================
+🎯 SIMPLE CLASSIFIER (No LLM)
+============================================================
+📋 Target: diary
+✅ Updated: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-12-04.md
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+You are a research paper tracking specialist. Manager will simply tell you which paper to track.
+
+**Your 5-step workflow:**
+
+1. **Search for Paper Metadata**
+   - Use brave_search to find:
+     * Official paper URL (arXiv, conference page, etc.)
+     * BibTeX formatted citation
+     * Authors, affiliations, date, venue
+     * Abstract/summary
+
+2. **Search for GitHub Repository**
+   - Use brave_search: "[paper_title] github repository"
+   - Look for official code implementation
+   - Note "Not found" if none exists
+
+3. **Create Paper Tracking File**
+   - Use bash_command to create markdown file at:
+     `/Users/xiaofanlu/Documents/road/FLOW/areas/papers/[paper_name].md`
+   - **MUST follow this template structure exactly:**
+
+# paper title
+
+## Basic Info
+- **Authors**: authors1, authors2...
+- **Affiliation**: xxx
+- **Date**: xxx. x, 202x
+- **Url**: paper url, arix or pdf
+- **GitHub**: xxx
+
+## BibTeX Citation
+```
+@misc{xu2025tinymodelbiglogic,
+  title={Tiny Model, Big Logic: Diversity-Driven Optimization Elicits Large-Model Reasoning Ability in VibeThinker-1.5B},
+  author={Sen Xu and Yi Zhou and Wei Wang and Jixin Min and Zhibin Yin and Yingwei Dai and Shixi Liu and Lianyu Pang and Yirong Chen and Junlin Zhang},
+  year={2025},
+  eprint={2511.06221},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI},
+  url={https://arxiv.org/abs/2511.06221},
+}
+```
+
+
+## Summary of the paper
+
+
+## Lucas' Review (time to review)
+
+---
+
+
+4. **Set Review Reminder**
+   - Use create_task:
+     * name: "Review paper: [paper_title]"
+     * tag: "paper_review"
+     * due_date: 2 days from Current Date: 2025-12-04 (Thursday)
+Current Time: 08:49:24
+     * note_directory: path to paper markdown file
+     * comments: "Paper tracking file created"
+
+5. **Log Completion**
+   - Use log_activity:
+     * summary: "Tracked paper: [paper_title]"
+     * files_changed: [path to markdown file]
+
+Current date: Current Date: 2025-12-04 (Thursday)
+Current Time: 08:49:24
+
+Complete all 5 steps thoroughly.
+
+
+============================================================
+🎯 MANAGER AGENT
+============================================================
+
+🔨 Manager tools: ['delegate_to_agent', 'bash_command', 'create_task', 'start_session_timer']
+
+==================================================
+MANAGER ITER 1
+==================================================
+That's a great idea for daily improvement! I'll set that up for you right🎤 Loading TTS model (Singleton)...
+✓ TTS model loaded successfully
+🎤 TTS Generation worker started
+🔊 TTS Playback worker started
+✓ TTS pipeline started (Dual-thread mode)
+ away. What would you like to practice today?🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
+
+╔══════════════════════════════════════════════════════════╗
+║         📝 HYBRID MODE (Simple Default)                  ║
+╚══════════════════════════════════════════════════════════╝
+
+Shortcuts:
+1. Cmd+Shift+E  → Quick text note
+                  (type '>' at start for Agent mode)
+                  (type 'C' for 40min timer, 'S' for 25min timer)
+2. Cmd+Shift+4  → Regional screenshot + comment
+                  (type '>' in comment for Agent mode)
+
+Starting...
+
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+✅ Shortcuts ready (Hybrid (Simple Default) mode):
+   Cmd+Shift+E: Quick text note (type 'C' for 40min timer)
+   Cmd+Shift+4: Regional screenshot + comment
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⏱️  Starting 14-minute countdown...
+✅ Timer started: 14 minutes
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⏱️  Starting 20-minute countdown...
+✅ Timer started: 20 minutes
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⏱️  Starting 35-minute countdown...
+✅ Timer started: 35 minutes
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⏱️  Starting 25-minute countdown...
+✅ Timer started: 25 minutes
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+============================================================
+🎯 SIMPLE CLASSIFIER (No LLM)
+============================================================
+📋 Target: diary
+✅ Updated: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-12-07.md
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+============================================================
+🎯 SIMPLE CLASSIFIER (No LLM)
+============================================================
+📋 Target: diary
+✅ Updated: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-12-08.md
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+🔤 TEXT SHORTCUT PRESSED!
+💬 Showing text input dialog...
+
+📸 SCREENSHOT SHORTCUT PRESSED!
+📋 Screenshot copied to clipboard
+💬 Showing screenshot comment dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+============================================================
+🎯 SIMPLE CLASSIFIER (No LLM)
+============================================================
+📸 Image saved: /Users/xiaofanlu/Documents/road/FLOW/diary/assets/2025-12-08/file-20251208140152300.png
+📋 Target: diary
+✅ Updated: /Users/xiaofanlu/Documents/road/FLOW/diary/2025-12-08.md
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+
+📸 SCREENSHOT SHORTCUT PRESSED!
+📋 Screenshot copied to clipboard
+💬 Showing screenshot comment dialog...
+⚠️  Notification failed: [Errno 2] No such file or directory: 'terminal-notifier'
+You are a research paper tracking specialist. Manager will simply tell you which paper to track.
+
+**Your 5-step workflow:**
+
+1. **Search for Paper Metadata**
+   - Use brave_search to find:
+     * Official paper URL (arXiv, conference page, etc.)
+     * BibTeX formatted citation
+     * Authors, affiliations, date, venue
+     * Abstract/summary
+
+2. **Search for GitHub Repository**
+   - Use brave_search: "[paper_title] github repository"
+   - Look for official code implementation
+   - Note "Not found" if none exists
+
+3. **Create Paper Tracking File**
+   - Use bash_command to create markdown file at:
+     `/Users/xiaofanlu/Documents/road/FLOW/areas/papers/[paper_name].md`
+   - **MUST follow this template structure exactly:**
+
+# paper title
+
+## Basic Info
+- **Authors**: authors1, authors2...
+- **Affiliation**: xxx
+- **Date**: xxx. x, 202x
+- **Url**: paper url, arix or pdf
+- **GitHub**: xxx
+
+## BibTeX Citation
+```
+@misc{xu2025tinymodelbiglogic,
+  title={Tiny Model, Big Logic: Diversity-Driven Optimization Elicits Large-Model Reasoning Ability in VibeThinker-1.5B},
+  author={Sen Xu and Yi Zhou and Wei Wang and Jixin Min and Zhibin Yin and Yingwei Dai and Shixi Liu and Lianyu Pang and Yirong Chen and Junlin Zhang},
+  year={2025},
+  eprint={2511.06221},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI},
+  url={https://arxiv.org/abs/2511.06221},
+}
+```
+
+
+## Summary of the paper
+
+
+## Lucas' Review (time to review)
+
+---
+
+
+4. **Set Review Reminder**
+   - Use create_task:
+     * name: "Review paper: [paper_title]"
+     * tag: "paper_review"
+     * due_date: 2 days from Current Date: 2025-12-08 (Monday)
+Current Time: 14:02:06
+     * note_directory: path to paper markdown file
+     * comments: "Paper tracking file created"
+
+5. **Log Completion**
+   - Use log_activity:
+     * summary: "Tracked paper: [paper_title]"
+     * files_changed: [path to markdown file]
+
+Current date: Current Date: 2025-12-08 (Monday)
+Current Time: 14:02:06
+
+Complete all 5 steps thoroughly.
+
+
+============================================================
+🎯 MANAGER AGENT
+============================================================
+
+🔨 Manager tools: ['delegate_to_agent', 'bash_command', 'create_task', 'start_session_timer']
+
+==================================================
+MANAGER ITER 1
+==================================================
+Happy to help you track that paper! What is the full, exact title of the paper you'🎤 Loading TTS model (Singleton)...
+✓ TTS model loaded successfully
+🎤 TTS Generation worker started
+🔊 TTS Playback worker started
+✓ TTS pipeline started (Dual-thread mode)
+d like me to track?🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
+🎤 Loading TTS model (Singleton)...
